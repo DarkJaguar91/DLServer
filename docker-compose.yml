@@ -1,0 +1,160 @@
+version: '3.5' 
+
+services:
+  # Watchtower (docker container updater)
+  # This container polls every 5 minutes for updates to docker containers.
+  # I.E. Auto updates the tools for you, no need to manually update containers. 
+  watchtower:
+    container_name: watchtower
+    restart: always
+    image: v2tec/watchtower
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock
+
+  traefik: 
+    image: traefik
+    container_name: traefik
+    restart: unless-stopped
+    command: --web --docker --docker.domain=127.0.0.1
+    ports: 
+      - 8680:8080 
+      - 80:80
+    networks: 
+      - darknet
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock
+      - /dev/null:/traefik.toml
+    labels: 
+      - "traefik.backend=traefik"
+      - "traefik.frontend.rule=PathPrefix: /traefik" 
+      - "traefik.port=8080"
+
+  plex:
+    image: linuxserver/plex 
+    container_name: plex
+    restart: unless-stopped
+    network_mode: host
+    #networks:
+    #- darknet
+    volumes:
+      - /server/plex:/config
+      - /DarkJaguar/Series:/media/Series
+      - /DarkJaguar/Movies:/media/Movies
+      - /transcord:/transcode
+    environment:
+      - PUID=1000
+      - PGID=1000
+      - VERSION=docker
+        # ports:
+        #- 32400:32400/tcp
+        #- 3005:3005/tcp
+        #- 8324:8324/tcp
+        #- 32469:32469/tcp
+        #- 32410:32410/udp
+        #- 32412:32412/udp
+        #- 32413:32413/udp
+        #- 32414:32414/udp
+    labels:
+      - "traefik.backend=plex"
+      - "traefik.frontend.rule=PathPrefix: /plex"
+      - "traefik.port=32400"
+
+  emby: 
+    image: emby/embyserver
+    container_name: emby
+    restart: unless-stopped
+    networks:
+      - darknet
+    volumes: 
+      - /etc/localtime:/etc/localtime:ro
+      - /server/emby:/config
+      - /DarkJaguar/Series:/media/Series
+      - /DarkJaguar/Movies:/media/Movies
+    ports:
+      - 8096:8096
+      - 8920:8920
+      - 7359:7359/udp
+      - 1900:1900/udp
+    environment: 
+      - AUTO_UPDATES_ON=true
+      - UID=1000
+      - GID=1000
+    labels: 
+      - "traefik.backend=emby"
+      - "traefik.frontend.rule=PathPrefix: /emby"
+      - "traefik.port=8096" 
+  
+  sonarr: 
+    image: linuxserver/sonarr
+    container_name: sonarr
+    restart: unless-stopped
+    networks:
+      - darknet
+    volumes: 
+      - /server/sonarr:/config
+      - /DarkJaguar/Series:/tv
+      - /DarkJaguar/complete:/downloads
+    environment:
+      - UID=1000
+      - GID=1000
+    labels: 
+      - "traefik.backend=sonarr"
+      - "traefik.frontend.rule=PathPrefix: /sonarr"
+      - "traefik.port=8989"
+
+  radarr: 
+    image: linuxserver/radarr
+    container_name: radarr
+    restart: unless-stopped
+    networks:
+      - darknet
+    volumes: 
+      - /server/radarr:/config
+      - /DarkJaguar/Movies:/movies
+      - /DarkJaguar/complete:/downloads
+    environment:
+      - UID=1000
+      - GID=1000
+    labels: 
+      - "traefik.backend=radarr"
+      - "traefik.frontend.rule=PathPrefix: /radarr"
+      - "traefik.port=7878"
+
+  sabnzbd: 
+    image: linuxserver/sabnzbd
+    container_name: sabnzbd
+    restart: unless-stopped
+    networks:
+      - darknet
+    volumes: 
+      - /server/sabnzbd:/config
+      - /DarkJaguar/incomplete:/incomplete-downloads
+      - /DarkJaguar/complete:/downloads
+    environment:
+      - UID=1000
+      - GID=1000
+    labels: 
+      - "traefik.backend=sabnzbd"
+      - "traefik.frontend.rule=PathPrefix: /sabnzbd"
+      - "traefik.port=8080"
+
+  hydra:
+    image: linuxserver/hydra2
+    container_name: hydra
+    restart: unless-stopped
+    networks:
+      - darknet
+    volumes: 
+      - /server/hydra:/config
+      - /DarkJaguar/complete:/downloads
+    environment:
+      - UID=1000
+      - GID=1000
+    labels: 
+      - "traefik.backend=hydra"
+      - "traefik.frontend.rule=PathPrefix: /hydra"
+      - "traefik.port=5076"    
+
+networks:
+  darknet:
+    name: darknet
