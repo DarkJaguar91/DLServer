@@ -5,9 +5,9 @@ services:
   # This container polls every 5 minutes for updates to docker containers.
   # I.E. Auto updates the tools for you, no need to manually update containers. 
   watchtower:
+    image: v2tec/watchtower
     container_name: watchtower
     restart: always
-    image: v2tec/watchtower
     volumes:
       - /var/run/docker.sock:/var/run/docker.sock
 
@@ -15,49 +15,24 @@ services:
     image: traefik
     container_name: traefik
     restart: unless-stopped
-    command: --web --docker --docker.domain=127.0.0.1
+    command:
+      #- "--log.level=DEBUG"
+      - "--api.insecure=true"
+      - "--providers.docker=true"
+      - "--providers.docker.exposedbydefault=false"
+      - "--entrypoints.web.address=:80"
     ports: 
       - 8680:8080 
+      - 443:443
       - 80:80
     networks: 
       - darknet
     volumes:
       - /var/run/docker.sock:/var/run/docker.sock
-      - /dev/null:/traefik.toml
-    labels: 
-      - "traefik.backend=traefik"
-      - "traefik.frontend.rule=PathPrefix: /traefik" 
-      - "traefik.port=8080"
-
-  plex:
-    image: linuxserver/plex 
-    container_name: plex
-    restart: unless-stopped
-    network_mode: host
-    #networks:
-    #- darknet
-    volumes:
-      - /server/plex:/config
-      - /DarkJaguar/Series:/media/Series
-      - /DarkJaguar/Movies:/media/Movies
-      - /transcord:/transcode
-    environment:
-      - PUID=1000
-      - PGID=1000
-      - VERSION=docker
-        # ports:
-        #- 32400:32400/tcp
-        #- 3005:3005/tcp
-        #- 8324:8324/tcp
-        #- 32469:32469/tcp
-        #- 32410:32410/udp
-        #- 32412:32412/udp
-        #- 32413:32413/udp
-        #- 32414:32414/udp
     labels:
-      - "traefik.backend=plex"
-      - "traefik.frontend.rule=PathPrefix: /plex"
-      - "traefik.port=32400"
+      - "traefik.enable=true"
+      - "traefik.http.routers.traefik.rule=PathPrefix(`/traefik`)"
+      - "traefik.http.services.traefik.loadbalancer.server.port=8080"
 
   emby: 
     image: emby/embyserver
@@ -79,11 +54,26 @@ services:
       - AUTO_UPDATES_ON=true
       - UID=1000
       - GID=1000
-    labels: 
-      - "traefik.backend=emby"
-      - "traefik.frontend.rule=PathPrefix: /emby"
-      - "traefik.port=8096" 
+    labels:
+      - "traefik.enable=true"
+      - "traefik.http.routers.emby.rule=PathPrefix(`/emby`)"
+      - "traefik.http.services.emby.loadbalancer.server.port=8096"
   
+  plex:
+    image: linuxserver/plex
+    container_name: plex
+    restart: unless-stopped
+    network_mode: host
+    volumes:
+      - /server/plex:/config
+      - /DarkJaguar/Series:/media/Series
+      - /DarkJaguar/Movies:/media/Movies
+      - /transcord:/transcode
+    environment:
+      - PUID=1000
+      - PGID=1000
+      - VERSION=docker
+
   sonarr: 
     image: linuxserver/sonarr
     container_name: sonarr
@@ -97,10 +87,9 @@ services:
     environment:
       - UID=1000
       - GID=1000
-    labels: 
-      - "traefik.backend=sonarr"
-      - "traefik.frontend.rule=PathPrefix: /sonarr"
-      - "traefik.port=8989"
+    labels:
+      - "traefik.enable=true"
+      - "traefik.http.routers.sonarr.rule=PathPrefix(`/sonarr`)"
 
   radarr: 
     image: linuxserver/radarr
@@ -115,10 +104,9 @@ services:
     environment:
       - UID=1000
       - GID=1000
-    labels: 
-      - "traefik.backend=radarr"
-      - "traefik.frontend.rule=PathPrefix: /radarr"
-      - "traefik.port=7878"
+    labels:
+      - "traefik.enable=true"
+      - "traefik.http.routers.radarr.rule=PathPrefix(`/radarr`)"
 
   sabnzbd: 
     image: linuxserver/sabnzbd
@@ -133,10 +121,9 @@ services:
     environment:
       - UID=1000
       - GID=1000
-    labels: 
-      - "traefik.backend=sabnzbd"
-      - "traefik.frontend.rule=PathPrefix: /sabnzbd"
-      - "traefik.port=8080"
+    labels:
+      - "traefik.enable=true"
+      - "traefik.http.routers.sabnzbd.rule=PathPrefix(`/sabnzbd`)"
 
   hydra:
     image: linuxserver/hydra2
@@ -150,10 +137,9 @@ services:
     environment:
       - UID=1000
       - GID=1000
-    labels: 
-      - "traefik.backend=hydra"
-      - "traefik.frontend.rule=PathPrefix: /hydra"
-      - "traefik.port=5076"    
+    labels:
+      - "traefik.enable=true"
+      - "traefik.http.routers.hydra.rule=PathPrefix(`/hydra`)"
 
 networks:
   darknet:
