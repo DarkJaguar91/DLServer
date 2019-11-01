@@ -21,6 +21,7 @@ services:
       - "--providers.docker=true"
       - "--providers.docker.exposedbydefault=false"
       - "--entrypoints.web.address=:80"
+      - "--entrypoints.websecure.address=:443"
     ports: 
       - 8680:8080 
       - 443:443
@@ -29,10 +30,46 @@ services:
       - darknet
     volumes:
       - /var/run/docker.sock:/var/run/docker.sock
+
+  organizr:
+    image: organizrtools/organizr-v2
+    container_name: organizr
+    restart: unless-stopped
+    networks:
+      - darknet
+    volumes:
+      - /server/organizr:/config
+    environment: 
+      - UID=1000
+      - GID=1000
     labels:
       - "traefik.enable=true"
-      - "traefik.http.routers.traefik.rule=PathPrefix(`/traefik`)"
-      - "traefik.http.services.traefik.loadbalancer.server.port=8080"
+      - "traefik.http.routers.organizr.rule=PathPrefix(`/`)"
+
+  netdata:
+    image: netdata/netdata
+    container_name: netdata
+    restart: unless-stopped
+    hostname: darkjaguar.mynetgear.com # set to fqdn of host
+    ports:
+      - 19999:19999
+    cap_add:
+      - SYS_PTRACE
+    security_opt:
+      - apparmor:unconfined
+    networks:
+      - darknet
+    volumes:
+      - /proc:/host/proc:ro
+      - /sys:/host/sys:ro
+      - /var/run/docker.sock:/var/run/docker.sock:ro
+    labels:
+      - "traefik.enable=true"
+      - "traefik.http.routers.netdata.rule=PathPrefix(`/netdata`)"
+      - "traefik.http.middlewares.netdata-redirectregex.redirectregex.regex=^(.*?)/netdata$$"
+      - "traefik.http.middlewares.netdata-redirectregex.redirectregex.replacement=$$1/netdata/"
+      - "traefik.http.middlewares.netdata-stripprefix.stripprefix.prefixes=/netdata"
+      - "traefik.http.routers.netdata.middlewares=netdata-redirectregex@docker,netdata-stripprefix@docker"
 
   emby: 
     image: emby/embyserver
@@ -73,6 +110,31 @@ services:
       - PUID=1000
       - PGID=1000
       - VERSION=docker
+    labels:
+      - "traefik.enable=true"
+      - "traefik.http.routers.plex.rule=PathPrefix(`/plex`)"
+      - "traefik.http.services.plex.loadbalancer.server.port=32400"
+      - "traefik.http.middlewares.plex-redirectregex.redirectregex.regex=^(.*?)/plex$$"
+      - "traefik.http.middlewares.plex-redirectregex.redirectregex.replacement=$$1/plex/"
+      - "traefik.http.middlewares.plex-stripprefix.stripprefix.prefixes=/plex"
+      - "traefik.http.routers.plex.middlewares=plex-redirectregex@docker,plex-stripprefix@docker"
+
+  ombi:
+    image: linuxserver/ombi
+    container_name: ombi
+    restart: unless-stopped
+    networks:
+      - darknet
+    volumes:
+      - /server/ombi:/config
+    ports:
+      - 3579:3579
+    environment:
+      - PUID=1000
+      - PGID=1000
+    labels:
+      - "traefik.enable=true"
+      - "traefik.http.routers.ombi.rule=PathPrefix(`/ombi`)"
 
   sonarr: 
     image: linuxserver/sonarr
@@ -87,6 +149,8 @@ services:
     environment:
       - UID=1000
       - GID=1000
+    ports:
+      - 8989:8989
     labels:
       - "traefik.enable=true"
       - "traefik.http.routers.sonarr.rule=PathPrefix(`/sonarr`)"
