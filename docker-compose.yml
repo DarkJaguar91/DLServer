@@ -11,46 +11,31 @@ services:
     volumes:
       - /var/run/docker.sock:/var/run/docker.sock
 
-  traefik: 
-    image: traefik
-    container_name: traefik
+  nginx:
+    image: linuxserver/letsencrypt
+    container_name: nginx
     restart: unless-stopped
-    command:
-      #- "--log.level=DEBUG"
-      - "--api.insecure=true"
-      - "--providers.docker=true"
-      - "--providers.docker.exposedbydefault=false"
-      - "--entrypoints.web.address=:80"
-      - "--entrypoints.websecure.address=:443"
-    ports: 
-      - 8680:8080 
-      - 443:443
-      - 80:80
+    ports:
+      - "80:80"
+      - "443:443"
     networks: 
       - darknet
+    environment:
+      - PUID=1000
+      - PGID=1000
+      - TZ=America/Vancouver
+      - URL=brandontalbot.com
+      - SUBDOMAINS=www,radarr,sonarr,plex,emby,netdata,ombi,sabnzbd,hydra,lidarr
+      - VALIDATION=http
+      - EMAIL=bjtal91@gmail.com
     volumes:
-      - /var/run/docker.sock:/var/run/docker.sock
-
-  organizr:
-    image: organizrtools/organizr-v2
-    container_name: organizr
-    restart: unless-stopped
-    networks:
-      - darknet
-    volumes:
-      - /server/organizr:/config
-    environment: 
-      - UID=1000
-      - GID=1000
-    labels:
-      - "traefik.enable=true"
-      - "traefik.http.routers.organizr.rule=PathPrefix(`/`)"
+      - ${CONFIG_DIR}/nginx/:/config
 
   netdata:
     image: netdata/netdata
     container_name: netdata
     restart: unless-stopped
-    hostname: darkjaguar.mynetgear.com # set to fqdn of host
+    hostname: brandontalbot.com # set to fqdn of host
     ports:
       - 19999:19999
     cap_add:
@@ -63,13 +48,6 @@ services:
       - /proc:/host/proc:ro
       - /sys:/host/sys:ro
       - /var/run/docker.sock:/var/run/docker.sock:ro
-    labels:
-      - "traefik.enable=true"
-      - "traefik.http.routers.netdata.rule=PathPrefix(`/netdata`)"
-      - "traefik.http.middlewares.netdata-redirectregex.redirectregex.regex=^(.*?)/netdata$$"
-      - "traefik.http.middlewares.netdata-redirectregex.redirectregex.replacement=$$1/netdata/"
-      - "traefik.http.middlewares.netdata-stripprefix.stripprefix.prefixes=/netdata"
-      - "traefik.http.routers.netdata.middlewares=netdata-redirectregex@docker,netdata-stripprefix@docker"
 
   emby: 
     image: emby/embyserver
@@ -79,9 +57,9 @@ services:
       - darknet
     volumes: 
       - /etc/localtime:/etc/localtime:ro
-      - /server/emby:/config
-      - /DarkJaguar/Series:/media/Series
-      - /DarkJaguar/Movies:/media/Movies
+      - ${CONFIG_DIR}/emby:/config
+      - ${SERIES_DIR}:/media/Series
+      - ${MOVIES_DIR}:/media/Movies
     ports:
       - 8096:8096
       - 8920:8920
@@ -89,12 +67,8 @@ services:
       - 1900:1900/udp
     environment: 
       - AUTO_UPDATES_ON=true
-      - UID=1000
-      - GID=1000
-    labels:
-      - "traefik.enable=true"
-      - "traefik.http.routers.emby.rule=PathPrefix(`/emby`)"
-      - "traefik.http.services.emby.loadbalancer.server.port=8096"
+      - UID=${UID}
+      - GID=${GID}
   
   plex:
     image: linuxserver/plex
@@ -102,22 +76,15 @@ services:
     restart: unless-stopped
     network_mode: host
     volumes:
-      - /server/plex:/config
-      - /DarkJaguar/Series:/media/Series
-      - /DarkJaguar/Movies:/media/Movies
-      - /transcord:/transcode
+      - ${CONFIG_DIR}/plex:/config
+      - ${SERIES_DIR}:/media/Series
+      - ${MOVIES_DIR}:/media/Movies
+      - ${MUSIC_DIR}:/media/Music
+      - ${TRANSCODE_DIR}:/transcode
     environment:
-      - PUID=1000
-      - PGID=1000
+      - PUID=${UID}
+      - PGID=${GID}
       - VERSION=docker
-    labels:
-      - "traefik.enable=true"
-      - "traefik.http.routers.plex.rule=PathPrefix(`/plex`)"
-      - "traefik.http.services.plex.loadbalancer.server.port=32400"
-      - "traefik.http.middlewares.plex-redirectregex.redirectregex.regex=^(.*?)/plex$$"
-      - "traefik.http.middlewares.plex-redirectregex.redirectregex.replacement=$$1/plex/"
-      - "traefik.http.middlewares.plex-stripprefix.stripprefix.prefixes=/plex"
-      - "traefik.http.routers.plex.middlewares=plex-redirectregex@docker,plex-stripprefix@docker"
 
   ombi:
     image: linuxserver/ombi
@@ -126,15 +93,12 @@ services:
     networks:
       - darknet
     volumes:
-      - /server/ombi:/config
+      - ${CONFIG_DIR}/ombi:/config
     ports:
       - 3579:3579
     environment:
-      - PUID=1000
-      - PGID=1000
-    labels:
-      - "traefik.enable=true"
-      - "traefik.http.routers.ombi.rule=PathPrefix(`/ombi`)"
+      - PUID=${UID}
+      - PGID=${GID}
 
   sonarr: 
     image: linuxserver/sonarr
@@ -143,17 +107,12 @@ services:
     networks:
       - darknet
     volumes: 
-      - /server/sonarr:/config
-      - /DarkJaguar/Series:/tv
-      - /DarkJaguar/complete:/downloads
+      - ${CONFIG_DIR}/sonarr:/config
+      - ${SERIES_DIR}:/tv
+      - ${COMPLETE_DIR}:/downloads
     environment:
-      - UID=1000
-      - GID=1000
-    ports:
-      - 8989:8989
-    labels:
-      - "traefik.enable=true"
-      - "traefik.http.routers.sonarr.rule=PathPrefix(`/sonarr`)"
+      - UID=${UID}
+      - GID=${GID}
 
   radarr: 
     image: linuxserver/radarr
@@ -162,15 +121,26 @@ services:
     networks:
       - darknet
     volumes: 
-      - /server/radarr:/config
-      - /DarkJaguar/Movies:/movies
-      - /DarkJaguar/complete:/downloads
+      - ${CONFIG_DIR}/radarr:/config
+      - ${MOVIES_DIR}:/movies
+      - ${COMPLETE_DIR}:/downloads
     environment:
-      - UID=1000
-      - GID=1000
-    labels:
-      - "traefik.enable=true"
-      - "traefik.http.routers.radarr.rule=PathPrefix(`/radarr`)"
+      - UID=${UID}
+      - GID=${GID}
+
+  lidarr: 
+    image: linuxserver/lidarr
+    container_name: lidarr
+    restart: unless-stopped
+    networks:
+      - darknet
+    volumes: 
+      - ${CONFIG_DIR}/lidarr:/config
+      - ${MUSIC_DIR}:/music
+      - ${DOWNLOADS_DIR}:/downloads
+    environment:
+      - UID=${UID}
+      - GID=${GID}
 
   sabnzbd: 
     image: linuxserver/sabnzbd
@@ -179,15 +149,12 @@ services:
     networks:
       - darknet
     volumes: 
-      - /server/sabnzbd:/config
-      - /DarkJaguar/incomplete:/incomplete-downloads
-      - /DarkJaguar/complete:/downloads
+      - ${CONFIG_DIR}/sabnzbd:/config
+      - ${INCOMPLETE_DIR}:/incomplete-downloads
+      - ${COMPLETE_DIR}:/downloads
     environment:
-      - UID=1000
-      - GID=1000
-    labels:
-      - "traefik.enable=true"
-      - "traefik.http.routers.sabnzbd.rule=PathPrefix(`/sabnzbd`)"
+      - UID=${UID}
+      - GID=${GID}
 
   hydra:
     image: linuxserver/hydra2
@@ -196,15 +163,22 @@ services:
     networks:
       - darknet
     volumes: 
-      - /server/hydra:/config
-      - /DarkJaguar/complete:/downloads
+      - ${CONFIG_DIR}/hydra:/config
+      - ${COMPLETE_DIR}:/downloads
     environment:
-      - UID=1000
-      - GID=1000
-    labels:
-      - "traefik.enable=true"
-      - "traefik.http.routers.hydra.rule=PathPrefix(`/hydra`)"
+      - UID=${UID}
+      - GID=${GID}
 
+  website:
+    image: com.brandontalbot/website:latest
+    container_name: website
+    restart: unless-stopped
+    networks:
+      - darknet
+    environment:
+      - PUID=1000
+      - PGID=1000
+  
 networks:
   darknet:
     name: darknet
