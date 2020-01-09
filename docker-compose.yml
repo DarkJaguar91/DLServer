@@ -21,8 +21,8 @@ services:
     networks: 
       - darknet
     environment:
-      - PUID=1000
-      - PGID=1000
+      - PUID=${UID}
+      - PGID=${GID}
       - TZ=${TIMEZONE}
       - URL=${DNS}
       - SUBDOMAINS=www,radarr,sonarr,plex,emby,netdata,ombi,sabnzbd,hydra,lidarr
@@ -137,7 +137,7 @@ services:
     volumes: 
       - ${CONFIG_DIR}/lidarr:/config
       - ${MUSIC_DIR}:/music
-      - ${DOWNLOADS_DIR}:/downloads
+      - ${COMPLETE_DIR}:/downloads
     environment:
       - UID=${UID}
       - GID=${GID}
