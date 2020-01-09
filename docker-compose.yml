@@ -23,11 +23,11 @@ services:
     environment:
       - PUID=1000
       - PGID=1000
-      - TZ=America/Vancouver
-      - URL=brandontalbot.com
+      - TZ=${TIMEZONE}
+      - URL=${DNS}
       - SUBDOMAINS=www,radarr,sonarr,plex,emby,netdata,ombi,sabnzbd,hydra,lidarr
       - VALIDATION=http
-      - EMAIL=bjtal91@gmail.com
+      - EMAIL=${EMAIL}
     volumes:
       - ${CONFIG_DIR}/nginx/:/config
 
@@ -176,8 +176,8 @@ services:
     networks:
       - darknet
     environment:
-      - PUID=1000
-      - PGID=1000
+      - PUID=${UID}
+      - PGID=${GID}
   
 networks:
   darknet:
