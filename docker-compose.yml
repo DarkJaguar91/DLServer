@@ -170,7 +170,7 @@ services:
       - GID=${GID}
 
   website:
-    image: com.brandontalbot/website:latest
+    image: server:test
     container_name: website
     restart: unless-stopped
     networks:
@@ -178,6 +178,15 @@ services:
     environment:
       - PUID=${UID}
       - PGID=${GID}
+      - PORT=80
+      - SONARR_HOST=${SONARR_HOST}
+      - SONARR_PORT=${SONARR_PORT}
+      - SONARR_TOKEN=${SONARR_TOKEN}
+      - SONARR_PROTOCOL=${SONARR_PROTOCOL}
+      - TVDB_API_TOKEN=${TVDB_API_TOKEN}
+      - TVDB_USER=${TVDB_USER}
+      - TVDB_USER_KEY=${TVDB_USER_KEY}
+
   
 networks:
   darknet:
